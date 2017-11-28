@@ -3,6 +3,7 @@ package encrpt
 import (
 	"bytes"
 	"errors"
+	"math"
 )
 
 type MerkleTree [][]byte
@@ -17,6 +18,42 @@ func buildMerkleTree(mt MerkleTree, i int) []byte {
 	}
 	mt[i] = simpleSha256(xorBytes(buildMerkleTree(mt, 2*i), buildMerkleTree(mt, 2*i+1)))
 	return mt[i]
+}
+
+func (mt *MerkleTree) ChangeNode(i int, to []byte) error {
+	if len(*mt) <= i || i < 0 {
+		return errors.New("Access outside of bound in Merkletree")
+	}
+
+	(*mt)[i] = to
+
+	if i == 0 {
+		return nil
+	}
+
+	if i%2 == 1 {
+		return mt.ChangeNode(i/2, simpleSha256(xorBytes((*mt)[i-1], to)))
+	} else {
+		return mt.ChangeNode(i/2, simpleSha256(xorBytes((*mt)[i+1], to)))
+	}
+}
+
+func getPathFrom(mt MerkleTree, index int) ([][]byte, error) {
+	if len(mt) <= index || index < 0 {
+		return nil, errors.New("Access outside of bound in Merkletree")
+	}
+
+	l := uint(math.Floor(math.Log2(float64(index)) + 1))
+	path := make([][]byte, l)
+	for i := uint(0); i < l; i++ {
+		newI := ((index) / (1 << i))
+		if newI%2 == 1 {
+			path[i] = mt[newI-1]
+		} else {
+			path[i] = mt[newI+1]
+		}
+	}
+	return path, nil
 }
 
 func CreateMerkleTree(data []byte, blockSize int) (MerkleTree, error) {
