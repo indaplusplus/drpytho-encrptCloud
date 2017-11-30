@@ -38,7 +38,11 @@ func (mt *MerkleTree) ChangeNode(i int, to []byte) error {
 	}
 }
 
-func getPathFrom(mt MerkleTree, index int) ([][]byte, error) {
+func (mt *MerkleTree) ChangeLeaf(i int, to []byte) error {
+	return mt.ChangeNode((len(*mt)-3)/2+i, to)
+}
+
+func (mt MerkleTree) GetPathFrom(index int) ([][]byte, error) {
 	if len(mt) <= index || index < 0 {
 		return nil, errors.New("Access outside of bound in Merkletree")
 	}
@@ -56,6 +60,10 @@ func getPathFrom(mt MerkleTree, index int) ([][]byte, error) {
 	return path, nil
 }
 
+func (mt MerkleTree) GetPathFromLeaf(index int) ([][]byte, error) {
+	return mt.GetPathFrom((len(mt)-3)/2 + index)
+}
+
 func CreateMerkleTree(data []byte, blockSize int) (MerkleTree, error) {
 	if len(data)%blockSize != 0 {
 		return nil, errors.New("The size of the data must be a multiple of the blockSize")
@@ -71,5 +79,4 @@ func CreateMerkleTree(data []byte, blockSize int) (MerkleTree, error) {
 		mt[N-2+i] = simpleSha256(data[i*blockSize : (i+1)*blockSize])
 	}
 	buildMerkleTree(mt, 0)
-
 }
