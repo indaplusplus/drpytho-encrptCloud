@@ -1,7 +1,7 @@
 package encrpt
 
 import (
-	"bytes"
+	//"bytes"
 	"errors"
 	"math"
 )
@@ -13,11 +13,11 @@ func isPowerOfTwo(n int) bool {
 }
 
 func buildMerkleTree(mt MerkleTree, i int) []byte {
-	if len(mt[i]) != 0 {
-		return mt[i]
+	if len(mt[i-1]) != 0 {
+		return mt[i-1]
 	}
-	mt[i] = simpleSha256(xorBytes(buildMerkleTree(mt, 2*i), buildMerkleTree(mt, 2*i+1)))
-	return mt[i]
+	mt[i-1] = simpleSha256(xorBytes(buildMerkleTree(mt, 2*i), buildMerkleTree(mt, 2*i+1)))
+	return mt[i-1]
 }
 
 func (mt *MerkleTree) ChangeNode(i int, to []byte) error {
@@ -78,5 +78,7 @@ func CreateMerkleTree(data []byte, blockSize int) (MerkleTree, error) {
 	for i := 0; i < N; i++ {
 		mt[N-2+i] = simpleSha256(data[i*blockSize : (i+1)*blockSize])
 	}
-	buildMerkleTree(mt, 0)
+	buildMerkleTree(mt, 1)
+
+	return mt, nil
 }

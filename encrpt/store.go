@@ -34,7 +34,7 @@ func (rsu *RamStoreUnit) getKey() []byte {
 	return rsu.key
 }
 
-func (rsu *RamStoreUnit) getBlock(index int) ([]byte, [][]byte, error) {
+func (rsu *RamStoreUnit) GetBlock(index int) ([]byte, [][]byte, error) {
 	block := rsu.data[index*BLOCK_SIZE : (index+1)*BLOCK_SIZE]
 	data, err := DecryptBlock(block, rsu.key, []byte{byte(index)})
 	if err != nil {
@@ -47,7 +47,7 @@ func (rsu *RamStoreUnit) getBlock(index int) ([]byte, [][]byte, error) {
 	return data, mtPath, nil
 }
 
-func (rsu *RamStoreUnit) setBlock(index int, data []byte) error {
+func (rsu *RamStoreUnit) SetBlock(index int, data []byte) error {
 	block, err := EncryptBlock(data, rsu.key, []byte{byte(index)})
 	if err != nil {
 		return err
