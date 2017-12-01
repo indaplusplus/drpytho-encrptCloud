@@ -9,9 +9,9 @@ import (
 )
 
 var KEY = [...]byte{4, 46, 53, 180, 151, 173, 194, 191, 100, 17, 107, 253, 230, 35, 19, 155, 161, 229, 146, 117, 11, 38, 221, 194, 234, 157, 204, 210, 26, 247, 37, 190}
-var store = make(map[string][]byte)
+var store = make(map[string]encrpt.StoreUnit)
 
-var singleStore, _ = encrpt.NewRamStoreUnit(14, KEY[:])
+var ramStore = encrpt.NewRamStore()
 
 func Hello(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
@@ -20,7 +20,14 @@ func Hello(w http.ResponseWriter, r *http.Request) {
 
 func InitializeFS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte("Hi Low"))
+	vals := r.URL.Query()
+	size, _ := strconv.Atoi(vals.Get("size"))
+	str, err := ramStore.NewUnit(uint(size), KEY[:])
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+	}
+	w.Write([]byte(*str))
 }
 
 func setBlockAt(w http.ResponseWriter, r *http.Request) {
@@ -28,9 +35,12 @@ func setBlockAt(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal("request", err)
 	}
-	log.Print(len(buf), string(buf))
-	block, _ := strconv.Atoi(r.URL.Query().Get("block"))
-	err = singleStore.SetBlock(block, buf)
+
+	vals := r.URL.Query()
+	unit := vals.Get("unit")
+	blockID, _ := strconv.Atoi(vals.Get("block"))
+
+	err = ramStore.GetUnit(unit).SetBlock(blockID, buf)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))
@@ -40,8 +50,11 @@ func setBlockAt(w http.ResponseWriter, r *http.Request) {
 }
 
 func getBlockAt(w http.ResponseWriter, r *http.Request) {
-	block, _ := strconv.Atoi(r.URL.Query().Get("block"))
-	buf, _, err := singleStore.GetBlock(block)
+	vals := r.URL.Query()
+	unit := vals.Get("unit")
+	blockID, _ := strconv.Atoi(vals.Get("block"))
+
+	buf, _, err := ramStore.GetUnit(unit).GetBlock(blockID)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(err.Error()))

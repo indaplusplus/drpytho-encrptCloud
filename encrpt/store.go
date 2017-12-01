@@ -1,72 +1,60 @@
 package encrpt
 
 import (
-	"errors"
+	"crypto/rand"
+	//"errors"
 )
 
 type StoreUnit interface {
-	getKey() []byte
-	getBlock(index int) ([]byte, [][]byte, error)
-	setBlock(index int, data []byte) error
-	getMT() MerkleTree
-	getTopMTHash() []byte
+	GetKey() []byte
+	GetBlock(index int) ([]byte, [][]byte, error)
+	SetBlock(index int, data []byte) error
+	GetMT() MerkleTree
+	GetTopMTHash() []byte
 }
 
-type RamStoreUnit struct {
-	data []byte
-	key  []byte
-	mt   MerkleTree
+type Store interface {
+	NewUnit(size uint, key []byte) (*string, error)
+	GetUnit(string) StoreUnit
 }
 
-func NewRamStoreUnit(size uint, key []byte) (*RamStoreUnit, error) {
-	rsu := new(RamStoreUnit)
-	rsu.data = make([]byte, 1<<size)
-	rsu.key = key
-	mt, err := CreateMerkleTree(rsu.data, BLOCK_SIZE)
-	if err != nil {
-		return nil, errors.New("Could not build MerkleTree")
-	}
-	rsu.mt = mt
-	return rsu, nil
+type RamStore struct {
+	units map[string]RamStoreUnit
 }
 
-func (rsu *RamStoreUnit) getKey() []byte {
-	return rsu.key
+func NewRamStore() *RamStore {
+	rs := new(RamStore)
+	rs.units = make(map[string]RamStoreUnit)
+	return rs
 }
 
-func (rsu *RamStoreUnit) GetBlock(index int) ([]byte, [][]byte, error) {
-	block := rsu.data[index*BLOCK_SIZE : (index+1)*BLOCK_SIZE]
-	data, err := DecryptBlock(block, rsu.key, []byte{byte(index)})
-	if err != nil {
-		return nil, nil, err
+func (rs *RamStore) NewUnit(size uint, key []byte) (*string, error) {
+	id := make([]byte, 12)
+
+	for {
+		rand.Read(id)
+		for i, val := range id {
+			id[i] = 'a' + val%('z'-'a'+1)
+		}
+		_, ok := rs.units[string(id)]
+		if !ok {
+			break
+		}
 	}
-	mtPath, err := rsu.mt.GetPathFromLeaf(index)
+	strID := string(id)
+	rsu, err := NewRamStoreUnit(size, key)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return data, mtPath, nil
+	rs.units[strID] = *rsu
+	return &strID, nil
 }
 
-func (rsu *RamStoreUnit) SetBlock(index int, data []byte) error {
-	block, err := EncryptBlock(data, rsu.key, []byte{byte(index)})
-	if err != nil {
-		return err
-	}
-	for i, val := range block {
-		rsu.data[index*BLOCK_SIZE+i] = val
-	}
-
-	err = rsu.mt.ChangeLeaf(index, simpleSha256(block))
-	if err != nil {
-		return err
+func (rs *RamStore) GetUnit(strID string) StoreUnit {
+	val, ok := rs.units[strID]
+	if ok {
+		ret := StoreUnit(&val)
+		return ret
 	}
 	return nil
-}
-
-func (rsu *RamStoreUnit) getMT() MerkleTree {
-	return rsu.mt
-}
-
-func (rsu *RamStoreUnit) getTopMTHash() []byte {
-	return rsu.mt[0]
 }
